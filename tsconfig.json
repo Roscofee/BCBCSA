@@ -1,0 +1,38 @@
+{
+	"ts-node": {
+		"compilerOptions": {
+			"module": "CommonJS"
+		}
+	},
+	"compilerOptions": {
+		"target": "ES2018",
+		"baseUrl": "./src",
+		"rootDir": "./src",
+		"noEmit": false,
+		"lib": ["ESNext", "DOM"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Node",
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"esModuleInterop": true,
+		"sourceMap": true,
+		"declaration": false,
+		"removeComments": true,
+		"strict": true,
+		"strictNullChecks": true,
+		"noImplicitOverride": false,
+		"noImplicitReturns": true,
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"typeRoots": ["types", "./node_modules/@types"],
+	},
+	"include": [
+		"types/**/*",
+		"src/**/*",
+		"node_modules/bc-stubs/bc/**/*.d.ts",
+	],
+	"exclude": [
+		"node_modules/bc-stubs/bc/NativeDeclarations/Messages.d.ts"
+	]
+}
