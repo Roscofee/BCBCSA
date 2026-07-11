@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name MPA Local Dev Server
+// @name BCBCSA Local Dev Server
 // @namespace https://www.bondageprojects.com/
 // @version 1.0.0
-// @description Maya's Petplay Additions loader for local development changes
+// @description BCBCSA loader for local development changes
 // @author MayaTheFoxy
 // @match https://bondageprojects.elementfx.com/*
 // @match https://www.bondageprojects.elementfx.com/*
@@ -14,12 +14,12 @@
 // ==/UserScript==
 
 setTimeout(
-	() => {
+    () => {
         const script = document.createElement("script");
         script.setAttribute("language", "JavaScript");
         script.setAttribute("crossorigin", "anonymous");
         script.setAttribute("src", `http://localhost:8008/devBundle.js?${Date.now()}`);
         document.head.appendChild(script);
-	},
-	1000
+    },
+    2000
 );

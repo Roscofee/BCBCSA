@@ -8,14 +8,10 @@
 //    the same that defined by TranslationLanguage. Ex: English -> EN
 //    If you are unsure of how to do this but still want to contribute, reach out and I will attempt to help.
 
-import RU from "./RU.json";
-import CN from "./CN.json";
-
 // Everything is defaulted to English
 const translations =
 {
-    RU,
-    CN
+
 };
 
 export function LocalizedText(text: string): string

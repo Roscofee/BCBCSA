@@ -1,20 +1,25 @@
 {
-	"name": "mpa",
-	"description": "",
-	"version": "0.6.0",
-	"author": "Maya",
+	"name": "bcbcsa",
+	"description": "bondage club bot client side addon",
+	"version": "0.0.1",
+	"author": "Roscofee",
+	"contributors": [
+		"MayaTheFoxy",
+		"Roscofee"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/MayaTheFoxy/MPA"
+		"url": "https://github.com/Roscofee/BCBCSA"
 	},
 	"scripts": {
-		"serve": "npx webpack serve --progress",
-		"stable": "npx webpack --env stable=true",
-		"dev": "npx webpack --env stable=false",
+		"serve": "npm run gen-types && npx webpack serve --progress",
+		"stable": "npm run gen-types && npx webpack --env stable=true",
+		"dev": "npm run gen-types && npx webpack --env stable=false",
 		"lint": "eslint ./src",
 		"lint-fix": "eslint ./src --fix",
-		"lang": "node ./src/localization/updateTemplate.js"
+		"lang": "node ./src/localization/updateTemplate.js",
+		"gen-types": "node ./src/generateTypes.js"
 	},
 	"dependencies": {
 		"bondage-club-mod-sdk": "^1.2.0"
@@ -22,7 +27,8 @@
 	"devDependencies": {
 		"@eslint/js": "^9.9.0",
 		"@stylistic/eslint-plugin": "^2.6.2",
-		"bc-stubs": "^115.0.1",
+		"bc-stubs": "^129.0.0",
+		"esbuild-register": "^3.6.0",
 		"eslint": "^9.9.0",
 		"globals": "^15.9.0",
 		"lz-string": "^1.5.0",
@@ -32,6 +38,6 @@
 		"typescript-eslint": "^8.1.0",
 		"webpack": "^5.93.0",
 		"webpack-cli": "^5.1.4",
-		"webpack-dev-server": "^5.0.4"
+		"webpack-dev-server": "^6.0.0"
 	}
 }

@@ -1,12 +1,10 @@
-import { LocalizedText } from "../localization/localization";
-import { ExportSettingsToClipboard, ImportSettingsFromClipboard, ResetStorage, SaveStorage } from "../util/storage";
-import { ICONS } from "../util/constants";
-import { IsDisplaySetting, IsOptionSetting, IsCheckboxSetting, IsTextSetting, IsNumberSetting, IsCustomSetting } from "../util/settingTypes";
-import { settings as defaultSettings } from "../util/registerModules";
-import { AUTHORITY_GROUP_OPTIONS, AuthorityGroup, AuthorityIsComparisonToCharacter, IsMemberNumberInAuthGroup } from "../util/authority";
-import { FindCharacterInRoom, SendMPAMessage } from "../util/messaging";
-import { Module, ModuleTitle } from "./_module";
-import { LevelSync } from "./virtualPet";
+import { LocalizedText } from "@/localization/localization";
+import { ExportSettingsToClipboard, ImportSettingsFromClipboard, ResetStorage, SaveStorage } from "@/util/storage";
+import { ADDON_NAME, ICONS, STORAGE_KEY } from "@/util/constants";
+import { IsDisplaySetting, IsOptionSetting, IsCheckboxSetting, IsTextSetting, IsNumberSetting, IsCustomSetting } from "@/util/settingTypes";
+import { settings as defaultSettings, registeredModules } from "@/util/registerModules";
+import { FindCharacterInRoom, SenBCBCSAMessage } from "@/util/messaging";
+import { Module, ModuleTitle } from "@/modules/_module";
 
 let settingsEdited = false;
 let settingChar: PlayerCharacter | null = null;
@@ -24,8 +22,8 @@ export function SetSettingsEdited(set: boolean)
 export const CANVAS_WIDTH = 2000;
 export const CANVAS_HEIGHT = 1000;
 
-// Exit button posistion on canvas
-const EXIT_POSISTION = [1815, 75, 90, 90] as const;
+// Exit button position on canvas
+const EXIT_POSITION = [1815, 75, 90, 90] as const;
 
 // Menu layout values
 export const BUTTON_MAX_NUMBER = 7;
@@ -79,42 +77,21 @@ const VERSION_TEXT = [
     WIKI_POSITION[2]
 ] as const;
 
-// Can add or remove modules depending on if wanting to display them or not
-// Order given is the order displayed
+let selfCategories: ModuleTitle[] = [];
+let otherCategories: ModuleTitle[] = [];
+// Order depends on order created
 function MENU_CATEGORIES(): ModuleTitle[]
 {
     if (!settingChar)
     {
         return [];
     }
-    // Display settings if you are the Player
-    if (settingChar.IsPlayer())
-    {
-        return [
-            ModuleTitle.Authority,
-            ModuleTitle.Profile,
-            ModuleTitle.Clicker,
-            ModuleTitle.VirtualPet,
-            ModuleTitle.VirtualPetHUD,
-            ModuleTitle.VirtualPetConditions
-        ];
-    }
-
-    // Display settings if you are an another player
-    return [
-        ModuleTitle.Authority,
-        ModuleTitle.Profile,
-        ModuleTitle.Clicker,
-        ModuleTitle.VirtualPet,
-        ModuleTitle.VirtualPetConditions
-    ];
+    return (settingChar.IsPlayer()) ? selfCategories : otherCategories;
 }
 
 export const MENU_TITLES: Partial<Record<ModuleTitle, string>> =
 {
-    [ModuleTitle.VirtualPet]: "Virtual Pet",
-    [ModuleTitle.VirtualPetHUD]: "Virtual Pet Hud",
-    [ModuleTitle.VirtualPetConditions]: "Virtual Pet Conditions"
+    [ModuleTitle.Example]: "Example"
 };
 
 export let currentMenu: ModuleTitle | null | "RESET_Settings" = null;
@@ -246,24 +223,7 @@ function DrawSubMenuOptions(subMenu: ModuleTitle): void
     // Shouldn't be needed but acts as failsafe and makes typescript happy
     if (!settingChar) { return; }
 
-    const noPermission = (
-        `others${subMenu}` in settingChar!.MPA[ModuleTitle.Authority]
-        && `self${subMenu}` in settingChar!.MPA[ModuleTitle.Authority]
-        && !IsMemberNumberInAuthGroup(
-            Player.MemberNumber ?? -1,
-            settingChar!.MPA[ModuleTitle.Authority][`others${subMenu}`] as AuthorityGroup,
-            settingChar!.MPA[ModuleTitle.Authority][`self${subMenu}`] as boolean,
-            settingChar!
-        )
-    )
-    || (
-        !Player.CanInteract() && (
-            (settingChar?.MemberNumber === Player.MemberNumber
-              && !Player.MPA[ModuleTitle.Authority].boundAccessSelf)
-            || (settingChar?.MemberNumber !== Player.MemberNumber
-              && !Player.MPA[ModuleTitle.Authority].boundAccessOthers)
-        )
-    );
+    const noPermission = false;
 
     if (customSettingOpen)
     {
@@ -273,7 +233,7 @@ function DrawSubMenuOptions(subMenu: ModuleTitle): void
 
     // Settings have to be displayable and have a value exist in the stored settings
     const settingsToDisplay = Object.entries(defaultSettings[subMenu] ?? {})
-        .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.MPA[subMenu] ?? {})));
+        .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.[STORAGE_KEY][subMenu] ?? {})));
 
     // Next and previous option buttons
     if (maxPages !== 1)
@@ -297,28 +257,25 @@ function DrawSubMenuOptions(subMenu: ModuleTitle): void
                 LocalizedText(setting.label)
                     .replaceAll("TargetCharacter", (settingChar?.Nickname || settingChar?.Name) ?? "")
                     .replaceAll("TargetPronounPossessive", settingChar?.GetPronouns() === "SheHer" ? "her" : "his"),
-                !!settingChar!.MPA[subMenu][settingName],
+                !!settingChar![STORAGE_KEY][subMenu][settingName],
                 disabledSetting,
                 "Black"
             );
         }
         else if (IsOptionSetting(setting))
         {
-            const index = setting.options.indexOf(settingChar!.MPA[subMenu][settingName] as string);
+            const index = setting.options.indexOf(settingChar![STORAGE_KEY][subMenu][settingName] as string);
             const optLen = setting.options.length;
 
-            // Can't decrease authority beyond if the player is not of that rank
-            const profileOrExcludes = (subMenu !== ModuleTitle.Authority) || !AUTHORITY_GROUP_OPTIONS.includes(settingChar!.MPA[subMenu][settingName]);
-            const prevDisabled = !(profileOrExcludes || AuthorityIsComparisonToCharacter(settingChar!.MPA[subMenu][settingName] as AuthorityGroup, ">=", Player.MemberNumber ?? -1, settingChar!));
-            const nextDisabled = !(profileOrExcludes || AuthorityIsComparisonToCharacter(settingChar!.MPA[subMenu][settingName] as AuthorityGroup, ">", Player.MemberNumber ?? -1, settingChar!))
-              && settingChar!.MPA[subMenu][settingName] !== "Self";
+            const prevDisabled = false;
+            const nextDisabled = false;
 
             DrawBackNextButton(
                 OPTION_LEFT,
                 OPTION_TOP + (i * (OPTION_GAP + OPTION_HEIGHT)),
                 OPTION_BACK_NEXT_WIDTH,
                 OPTION_HEIGHT,
-                LocalizedText(settingChar!.MPA[subMenu][settingName] as string),
+                LocalizedText(settingChar![STORAGE_KEY][subMenu][settingName] as string),
                 !(disabledSetting || (prevDisabled && nextDisabled)) ? "#ffffff" : "#aaaaaa",
                 "",
                 () => LocalizedText(prevDisabled ? "" : (setting.loop ? setting.options[(index - 1 + optLen) % optLen] : index > 0 ? setting.options[index - 1] : "")),
@@ -403,7 +360,7 @@ function GetClickedOption(subMenu: ModuleTitle, noPermission: boolean): void
 
     // Settings have to be displayable and have a value exist in the stored settings
     const settingsToDisplay = Object.entries(defaultSettings[subMenu] ?? {})
-        .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.MPA[subMenu] ?? {})));
+        .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.[STORAGE_KEY][subMenu] ?? {})));
 
     // Loop through all the options and check if the click occured in the type's corresponding click zone
     settingsToDisplay.slice((currentPage - 1) * OPTION_PER_PAGE, currentPage * OPTION_PER_PAGE).forEach((val, i) =>
@@ -424,17 +381,20 @@ function GetClickedOption(subMenu: ModuleTitle, noPermission: boolean): void
                 && !disabledSetting
             )
             {
-                settingChar!.MPA[subMenu][settingName] = !settingChar!.MPA[subMenu][settingName];
+                if (!setting.doNotModify)
+                {
+                    settingChar![STORAGE_KEY][subMenu][settingName] = !settingChar![STORAGE_KEY][subMenu][settingName];
+                    settingsEdited = true;
+                }
                 if (setting.onSet)
                 {
-                    setting.onSet(settingChar!, settingChar!.MPA[subMenu][settingName], !settingChar!.MPA[subMenu][settingName]);
+                    setting.onSet(settingChar!, settingChar![STORAGE_KEY][subMenu][settingName], !settingChar![STORAGE_KEY][subMenu][settingName]);
                 }
-                settingsEdited = true;
             }
         }
         else if (IsOptionSetting(setting))
         {
-            const index = setting.options.indexOf(settingChar!.MPA[subMenu][settingName] as string);
+            const index = setting.options.indexOf(settingChar![STORAGE_KEY][subMenu][settingName] as string);
             const optLen = setting.options.length;
             // Back arrow
             if (
@@ -447,19 +407,18 @@ function GetClickedOption(subMenu: ModuleTitle, noPermission: boolean): void
                 && !disabledSetting
                 && (setting.loop
                   || index > 0)
-                // Can't decrease authority beyond if the player is not of that rank
-                && (subMenu !== ModuleTitle.Authority
-                  || !AUTHORITY_GROUP_OPTIONS.includes(settingChar!.MPA[subMenu][settingName])
-                  || AuthorityIsComparisonToCharacter(settingChar!.MPA[subMenu][settingName] as AuthorityGroup, ">=", Player.MemberNumber ?? -1, settingChar!))
             )
             {
-                const prevValue = settingChar!.MPA[subMenu][settingName];
-                settingChar!.MPA[subMenu][settingName] = setting.options[(index - 1 + optLen) % optLen];
+                if (!setting.doNotModify)
+                {
+                    settingChar![STORAGE_KEY][subMenu][settingName] = setting.options[(index - 1 + optLen) % optLen];
+                    settingsEdited = true;
+                }
                 if (setting.onSet)
                 {
+                    const prevValue = settingChar![STORAGE_KEY][subMenu][settingName];
                     setting.onSet(settingChar!, setting.options[(index - 1 + optLen) % optLen], prevValue);
                 }
-                settingsEdited = true;
             }
             // Next arrow
             else if (
@@ -472,19 +431,18 @@ function GetClickedOption(subMenu: ModuleTitle, noPermission: boolean): void
                 && !disabledSetting
                 && (setting.loop
                   || index + 1 < setting.options.length)
-                // Can't increase authority beyond what the player who is setting it is
-                && (subMenu !== ModuleTitle.Authority
-                  || !AUTHORITY_GROUP_OPTIONS.includes(settingChar!.MPA[subMenu][settingName])
-                  || AuthorityIsComparisonToCharacter(settingChar!.MPA[subMenu][settingName] as AuthorityGroup, ">", Player.MemberNumber ?? -1, settingChar!))
             )
             {
-                const prevValue = settingChar!.MPA[subMenu][settingName];
-                settingChar!.MPA[subMenu][settingName] = setting.options[(index + 1 + optLen) % optLen];
+                if (!setting.doNotModify)
+                {
+                    settingChar![STORAGE_KEY][subMenu][settingName] = setting.options[(index + 1 + optLen) % optLen];
+                    settingsEdited = true;
+                }
                 if (setting.onSet)
                 {
+                    const prevValue = settingChar![STORAGE_KEY][subMenu][settingName];
                     setting.onSet(settingChar!, setting.options[(index + 1 + optLen) % optLen], prevValue);
                 }
-                settingsEdited = true;
             }
         }
         else if (IsCustomSetting(setting))
@@ -510,9 +468,9 @@ export function ExitButtonPressed(): void
 {
     if (currentMenu === null)
     {
-        if (window.MPA.menuLoaded)
+        if (window[ADDON_NAME].menuLoaded)
         {
-            window.MPA.menuLoaded = false;
+            window[ADDON_NAME].menuLoaded = false;
         }
         PreferenceMenuExit();
     }
@@ -539,7 +497,7 @@ export function ExitButtonPressed(): void
 
 export function PreferenceMenuClick(): void
 {
-    if (MouseIn(...EXIT_POSISTION))
+    if (MouseIn(...EXIT_POSITION))
     {
         ExitButtonPressed();
         return;
@@ -595,7 +553,7 @@ export function PreferenceMenuClick(): void
         currentMenu = GetClickedMenu(MENU_CATEGORIES());
         currentPage = 1;
         maxPages = Math.ceil(Object.entries(defaultSettings[currentMenu ?? ""] ?? {})
-            .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.MPA[currentMenu ?? ""] ?? {})))
+            .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.[STORAGE_KEY][currentMenu ?? ""] ?? {})))
             .length / OPTION_PER_PAGE);
         CreateHTMLElements(currentMenu);
     }
@@ -607,24 +565,17 @@ export function PreferenceMenuClick(): void
     // Get option of the current menu
     if (currentMenu !== null)
     {
-        const noPermission = (
-            `others${currentMenu}` in settingChar!.MPA[ModuleTitle.Authority]
-            && `self${currentMenu}` in settingChar!.MPA[ModuleTitle.Authority]
-            && !IsMemberNumberInAuthGroup(
-                Player.MemberNumber ?? -1,
-                settingChar!.MPA[ModuleTitle.Authority][`others${currentMenu}`] as AuthorityGroup,
-                settingChar!.MPA[ModuleTitle.Authority][`self${currentMenu}`] as boolean,
-                settingChar!
-            )
-        )
-        || (
-            !Player.CanInteract() && (
-                (settingChar?.MemberNumber === Player.MemberNumber
-                  && !Player.MPA[ModuleTitle.Authority].boundAccessSelf)
-                || (settingChar?.MemberNumber !== Player.MemberNumber
-                  && !Player.MPA[ModuleTitle.Authority].boundAccessOthers)
-            )
-        );
+        // const noPermission = (
+        //     `others${currentMenu}` in settingChar![STORAGE_KEY][ModuleTitle.Authority]
+        //     && `self${currentMenu}` in settingChar![STORAGE_KEY][ModuleTitle.Authority]
+        //     && !IsMemberNumberInAuthGroup(
+        //         Player.MemberNumber ?? -1,
+        //         settingChar![STORAGE_KEY][ModuleTitle.Authority][`others${currentMenu}`] as AuthorityGroup,
+        //         settingChar![STORAGE_KEY][ModuleTitle.Authority][`self${currentMenu}`] as boolean,
+        //         settingChar!
+        //     )
+        // );
+        const noPermission = false;
 
         if (customSettingOpen && currentMenu)
         {
@@ -635,7 +586,7 @@ export function PreferenceMenuClick(): void
         // Next and previous buttons
         // Only check if setting page needs it
         if (Object.entries(defaultSettings[currentMenu ?? ""] ?? {})
-            .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.MPA[currentMenu ?? ""] ?? {})))
+            .filter(([key, setting]) => IsDisplaySetting(setting) && (key in (settingChar?.[STORAGE_KEY][currentMenu ?? ""] ?? {})))
             .length > OPTION_PER_PAGE
         )
         {
@@ -683,7 +634,7 @@ function ResetMenuRun(): void
     MainCanvas.textAlign = "center";
 
     DrawText(
-        LocalizedText("WARNING: Are you sure you want to reset your MPA settings and data back to default?"),
+        LocalizedText(`WARNING: Are you sure you want to reset your ${ADDON_NAME} settings and data back to default?`),
         CANVAS_WIDTH / 2,
         250,
         "#000000",
@@ -744,7 +695,7 @@ export function PreferenceMenuRun(): void
     }
 
     const prevTextAlign = MainCanvas.textAlign;
-    DrawButton(...EXIT_POSISTION, "", "White", "Icons/Exit.png");
+    DrawButton(...EXIT_POSITION, "", "White", "Icons/Exit.png");
     MainCanvas.textAlign = "center";
     DrawText(`${LocalizedText("Maya's Petplay Additions")}${currentMenu ? ` - ${settingChar?.Nickname || settingChar?.Name}'s ${LocalizedText(MENU_TITLES[currentMenu] ?? currentMenu)}` : ""}`, 1000, 125, "Black", "Gray");
 
@@ -767,14 +718,14 @@ export function PreferenceMenuRun(): void
             LocalizedText("Wiki"),
             "#ffffff",
             "",
-            LocalizedText("Open the MPA wiki in a new tab")
+            LocalizedText(`Open the ${ADDON_NAME} wiki in a new tab`)
         );
         DrawButton(
             ...DISCORD_POSITION,
             "Discord",
             "#ffffff",
             ICONS.DISCORD,
-            "Join the MPA discord!"
+            "Join the BCBCSA discord!"
         );
         DrawButton(
             ...RESET_POSITION,
@@ -798,7 +749,7 @@ export function PreferenceMenuRun(): void
             LocalizedText("Export your current settings to the clipboard")
         );
         DrawTextFit(
-            `${LocalizedText("Version")}: ${Player.MPA.version}`,
+            `${LocalizedText("Version")}: ${Player[STORAGE_KEY].version}`,
             ...VERSION_TEXT,
             "Black",
             "Gray"
@@ -829,15 +780,14 @@ function PreferenceMenuExit(): boolean | void
     {
         if (settingChar.MemberNumber === Player.MemberNumber)
         {
-            LevelSync(false, false, false);
             SaveStorage(true);
         }
         else
         {
-            SendMPAMessage(
+            SenBCBCSAMessage(
                 {
                     message: "SettingPutRequest",
-                    settings: settingChar.MPA
+                    settings: settingChar[ADDON_NAME]
                 },
                 settingChar.MemberNumber
             );
@@ -848,7 +798,7 @@ function PreferenceMenuExit(): boolean | void
               && owner !== Player.MemberNumber
               && FindCharacterInRoom(owner, { Nickname: false, Name: false }))
             {
-                SendMPAMessage({ message: "ownerAdded" }, owner);
+                SenBCBCSAMessage({ message: "ownerAdded" }, owner);
             }
         }
         for (const owner of ownersRemoved)
@@ -857,7 +807,7 @@ function PreferenceMenuExit(): boolean | void
               && owner !== Player.MemberNumber
               && FindCharacterInRoom(owner, { Nickname: false, Name: false }))
             {
-                SendMPAMessage({ message: "ownerRemoved" }, owner);
+                SenBCBCSAMessage({ message: "ownerRemoved" }, owner);
             }
         }
         ownersAdded = [];
@@ -892,11 +842,65 @@ function PlayerPreferenceMenuLoad(): void
 }
 
 /**
- * Get the string with an MPA identifier in front
+ * Get the string with an BCBCSA identifier in front
  */
 export function ElementName(title: ModuleTitle | string, setting: string): string
 {
-    return `MPA_OPTION_${title}${setting}`;
+    return `${ADDON_NAME}_OPTION_${title}${setting}`;
+}
+
+/**
+ * Support onUnfocus on text and number settings (does not save the value)
+ * @param element Element to add callbacks for
+ * @param setting Setting containing the callback
+ */
+function AddElementCallbacks(element: HTMLInputElement, setting: Setting)
+{
+    if (IsTextSetting(setting) || IsNumberSetting(setting))
+    {
+        return;
+    }
+
+    let previousValue: string = element.value;
+    element.addEventListener("focus", (_event) =>
+    {
+        previousValue = element.value;
+    });
+    element.addEventListener("blur", (_event) =>
+    {
+        if ((IsTextSetting(setting) || IsNumberSetting(setting))
+          && typeof setting.onUnfocus === "function")
+        {
+            const currentVal = element.value;
+            if (currentVal != previousValue)
+            {
+                if (IsTextSetting(setting))
+                {
+                    setting.onUnfocus(settingChar as PlayerCharacter, currentVal, previousValue);
+                }
+                else if (IsNumberSetting(setting))
+                {
+                    setting.onUnfocus(settingChar as PlayerCharacter, Number(currentVal), Number(previousValue));
+                }
+            }
+        }
+    });
+    if (IsNumberSetting(setting)
+      && typeof setting.onUnfocus === "function")
+    {
+        element.addEventListener("change", (_event) =>
+        {
+            const currentVal = element.value;
+            if (currentVal != previousValue
+              // Need to keep typescript happy. But don't want to add the listener if not needed
+              && IsNumberSetting(setting)
+              && typeof setting.onUnfocus === "function")
+            {
+                setting.onUnfocus(settingChar as PlayerCharacter, Number(currentVal), Number(previousValue));
+                previousValue = currentVal;
+            }
+        });
+    }
 }
 
 /**
@@ -914,18 +918,20 @@ function CreateHTMLElements(subMenu: ModuleTitle | null, page: number = currentP
         const id = ElementName(subMenu, settingName);
         if (IsTextSetting(setting))
         {
-            ElementCreateInput(id, "text", settingChar!.MPA[subMenu][settingName] as string, setting.maxChars ?? OPTION_TEXT_MAX_CHARS);
+            const element = ElementCreateInput(id, "text", settingChar![STORAGE_KEY][subMenu][settingName] as string, setting.maxChars ?? OPTION_TEXT_MAX_CHARS);
+            AddElementCallbacks(element, setting);
         }
         else if (IsNumberSetting(setting))
         {
-            ElementCreateInput(id, "number", settingChar!.MPA[subMenu][settingName].toString());
+            const element = ElementCreateInput(id, "number", settingChar![STORAGE_KEY][subMenu][settingName].toString());
             ElementSetAttribute(id, "min", setting.min.toString());
             ElementSetAttribute(id, "max", setting.max.toString());
             ElementSetAttribute(id, "inputmode", "decimal");
-            if (setting.step)
+            if (typeof setting.step === "number")
             {
                 ElementSetAttribute(id, "step", setting.step.toString());
             }
+            AddElementCallbacks(element, setting);
         }
     });
 }
@@ -937,30 +943,24 @@ function UpdateAndDeleteHTMLElements(subMenu: ModuleTitle, page: number = curren
     // Shouldn't be needed but acts as failsafe and makes typescript happy
     if (!settingChar) { return; }
 
-    // Update the virtual pet stats based on current values so the level doesn't jump around
-    if (subMenu === ModuleTitle.VirtualPet)
-    {
-        LevelSync(false, false, false);
-    }
-
     Object.entries(defaultSettings[subMenu] ?? {}).slice((page - 1) * OPTION_PER_PAGE, page * OPTION_PER_PAGE).forEach((set) =>
     {
         const [settingName, setting] = set;
         const id = ElementName(subMenu, settingName);
         if (IsTextSetting(setting))
         {
-            if (settingChar!.MPA[subMenu][settingName] !== ElementValue(id))
+            if (settingChar![STORAGE_KEY][subMenu][settingName] !== ElementValue(id) && !setting.doNotModify)
             {
-                settingChar!.MPA[subMenu][settingName] = ElementValue(id);
+                settingChar![STORAGE_KEY][subMenu][settingName] = ElementValue(id);
                 settingsEdited = true;
             }
             ElementRemove(id);
         }
         if (IsNumberSetting(setting))
         {
-            if (settingChar!.MPA[subMenu][settingName] !== Number(ElementValue(id)))
+            if (settingChar![STORAGE_KEY][subMenu][settingName] !== Number(ElementValue(id)) && !setting.doNotModify)
             {
-                settingChar!.MPA[subMenu][settingName] = Number(ElementValue(id));
+                settingChar![STORAGE_KEY][subMenu][settingName] = Number(ElementValue(id));
                 settingsEdited = true;
             }
             ElementRemove(id);
@@ -979,8 +979,8 @@ export class SettingsModule extends Module
     {
         // Add settings to the extension options
         PreferenceRegisterExtensionSetting({
-            Identifier: "MPA",
-            ButtonText: LocalizedText("MPA Settings"),
+            Identifier: ADDON_NAME,
+            ButtonText: LocalizedText(`${ADDON_NAME} Settings`),
             Image: ICONS.PAW,
             click: PreferenceMenuClick,
             run: PreferenceMenuRun,
@@ -1024,6 +1024,19 @@ export class SettingsModule extends Module
         }
         document.addEventListener("keypress", EscapeHandler, true);
         document.addEventListener("keydown", EscapeHandler, true);
+
+        for (const module of Object.values(registeredModules))
+        {
+            if (module.DisplayInSettings)
+            {
+                selfCategories.push(module.Title);
+
+                if (module.Public)
+                {
+                    otherCategories.push(module.Title);
+                }
+            }
+        }
     }
 
     Unload(): void

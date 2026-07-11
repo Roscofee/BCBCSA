@@ -46,10 +46,10 @@ module.exports = (env) => {
 				},
 			}],
 		},
-		optimization: {
-			minimize: true,
-			minimizer: [new TerserPlugin()],
-		},
+		// optimization: {
+		// 	minimize: true,
+		// 	minimizer: [new TerserPlugin()],
+		// },
 		output: {
 			path: DIST_DIR,
 			filename: `${env.stable == "true" ? "stable" : "dev"}Bundle.js`,
@@ -59,6 +59,10 @@ module.exports = (env) => {
 		],
 		resolve: {
 			extensions: [".ts", ".tsx", ".js"],
+			alias: {
+				"@": path.resolve(__dirname, "src"),
+				"@assets": path.resolve(__dirname, "assets"),
+			},
 		},
 		performance: false
 	};

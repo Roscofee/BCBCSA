@@ -1,22 +1,24 @@
-const KEY = "MPA_STORAGE";
+import { ADDON_NAME } from "@/util/constants";
 
-let storage: MPALocalStorage;
+const KEY = `${ADDON_NAME}_STORAGE`;
 
-function BlankStorage(): MPALocalStorage
+let storage: BCBCSALocalStorage;
+
+function BlankStorage(): BCBCSALocalStorage
 {
     return {
         lastOnline: Date.now()
     };
 }
 
-export function GetLocalStorage(): MPALocalStorage
+export function GetLocalStorage(): BCBCSALocalStorage
 {
     return storage;
 }
 
 export function LoadLocalStorage(): void
 {
-    storage = JSON.parse(LZString.decompressFromBase64(window.localStorage.getItem(KEY) ?? "") ?? "{}") ?? BlankStorage() as MPALocalStorage;
+    storage = (JSON.parse(LZString.decompressFromBase64(window.localStorage.getItem(KEY) ?? "") ?? "{}") ?? BlankStorage()) as BCBCSALocalStorage;
 }
 
 export function ResetLocalStorage(): void
@@ -27,18 +29,6 @@ export function ResetLocalStorage(): void
 
 export function SaveToLocalStorage(): void
 {
-    // Check if existing local storge
+    // Check if existing local storage
     window.localStorage.setItem(KEY, LZString.compressToBase64(JSON.stringify(storage)));
-}
-
-export function GetLastOnline(): number
-{
-    return Math.max(Player.MPA?.lastOnline ?? 0, storage?.lastOnline);
-}
-
-export function UpdateLastOnline(): void
-{
-    storage.lastOnline = Date.now();
-    Player.MPA.lastOnline = Date.now();
-    SaveToLocalStorage();
 }

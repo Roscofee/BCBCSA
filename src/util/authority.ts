@@ -1,12 +1,10 @@
-import { ModuleTitle } from "../modules/_module";
-import { FindCharacterInRoom } from "./messaging";
+import { FindCharacterInRoom } from "@/util/messaging";
 
 export const AUTHORITY_GROUP_OPTIONS: AuthorityGroup[] = [
     "Public",
     "Friends",
     "Whitelist",
     "Lovers",
-    "Owners",
     "Clubowner",
     "Self"
 ];
@@ -17,7 +15,6 @@ const AUTHORITY_GROUP_PRIO_ORDER: AuthorityGroup[] = [
     "Friends",
     "Whitelist",
     "Lovers",
-    "Owners",
     "D/s Family",
     "Clubowner",
     "Self"
@@ -28,13 +25,12 @@ export const AUTHORITY_GROUPS =
 {
     Self: (C: Character) => [C.MemberNumber ?? -1],
     Clubowner: (C: Character) => C?.Ownership?.MemberNumber ? [C?.Ownership?.MemberNumber] : [],
-    Owners: (C: Character) => C.MPA?.[ModuleTitle.Authority]?.newOwners.owners ?? [],
     Lovers: Lovers,
     WhiteList: (C: Character) => C.WhiteList ?? [],
     FriendList: () => Player.FriendList ?? []
 };
 
-export type AuthorityGroup = "Self" | "Clubowner" | "D/s Family" | "Owners" | "Lovers" | "Whitelist" | "Friends" | "Public" | "None";
+export type AuthorityGroup = "Self" | "Clubowner" | "D/s Family" | "Lovers" | "Whitelist" | "Friends" | "Public" | "None";
 
 export function IsMemberNumberInAuthGroup(memberNumber: number, authGroup: AuthorityGroup, allowSelf = false, sourceChar: Character = Player): boolean
 {
@@ -96,9 +92,6 @@ export function IsMemberNumberInAuthGroup(memberNumber: number, authGroup: Autho
         case "Lovers":
             authCheck = new Set([...authCheck, ...AUTHORITY_GROUPS.Lovers(sourceChar)]);
             // @ts-ignore: fallthrough is intentional
-        case "Owners":
-            authCheck = new Set([...authCheck, ...AUTHORITY_GROUPS.Owners(sourceChar)]);
-            // @ts-ignore: fallthrough is intentional
         case "Clubowner":
             authCheck = new Set([...authCheck, ...AUTHORITY_GROUPS.Clubowner(sourceChar)]);
             // @ts-ignore: fallthrough is intentional
@@ -117,10 +110,6 @@ export function HighestLevelAuthorityGroup(memberNumber: number, targetChar: Cha
     if (targetChar?.Ownership?.MemberNumber === memberNumber)
     {
         return "Clubowner";
-    }
-    if (AUTHORITY_GROUPS.Owners(targetChar).includes(memberNumber))
-    {
-        return "Owners";
     }
     if (AUTHORITY_GROUPS.Lovers(targetChar).includes(memberNumber))
     {

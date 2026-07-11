@@ -1,71 +1,76 @@
 export function IsSetting(setting: any): setting is Setting
 {
+    const set = setting as Setting;
     return (
-        typeof (setting as Setting).name === "string"
-        && ["checkbox", "option", "text", "number", "record", "custom"].includes((setting as Setting).type)
-        && (setting as Setting).value !== undefined
+        typeof set.name === "string"
+        && ["checkbox", "option", "text", "number", "record", "custom"].includes(set.type)
+        && set.value !== undefined
     );
 }
 export function IsDisplaySetting(setting: Setting): setting is DisplayedSetting
 {
+    const set = setting as DisplayedSetting;
     return (
         IsSetting(setting)
-        && typeof (setting as DisplayedSetting).active === "function"
-        && typeof (setting as DisplayedSetting).label === "string"
+        && typeof set.active === "function"
+        && typeof set.label === "string"
     );
 }
 export function IsCheckboxSetting(setting: Setting): setting is CheckboxSetting
 {
+    const set = setting as CheckboxSetting;
     return (
         IsDisplaySetting(setting)
-        && (setting as CheckboxSetting).type === "checkbox"
-        && typeof (setting as CheckboxSetting).value === "boolean"
+        && set.type === "checkbox"
+        && typeof set.value === "boolean"
+        && (typeof set.doNotModify === "function" || typeof set.doNotModify === "undefined")
     );
 }
 export function IsOptionSetting(setting: Setting): setting is OptionSetting
 {
+    const set = setting as OptionSetting;
     return (
         IsDisplaySetting(setting)
-        && (setting as OptionSetting).type === "option"
-        && typeof (setting as OptionSetting).value === "string"
-        && Array.isArray((setting as OptionSetting).options)
-        && typeof (setting as OptionSetting).loop === "boolean"
+        && set.type === "option"
+        && typeof set.value === "string"
+        && Array.isArray(set.options)
+        && typeof set.loop === "boolean"
     );
 }
 export function IsTextSetting(setting: Setting): setting is TextSetting
 {
+    const set = setting as TextSetting;
     return (
         IsDisplaySetting(setting)
-        && (setting as TextSetting).type === "text"
-        && typeof (setting as TextSetting).value === "string"
-        && (typeof (setting as TextSetting).width === "number"
-          || (setting as TextSetting).width === null)
-        && (typeof (setting as TextSetting).maxChars === "number"
-          || (setting as TextSetting).maxChars === null)
+        && set.type === "text"
+        && typeof set.value === "string"
+        && (typeof set.width === "number" || set.width === null)
+        && (typeof set.maxChars === "number" || set.maxChars === null)
     );
 }
 export function IsNumberSetting(setting: Setting): setting is NumberSetting
 {
+    const set = setting as NumberSetting;
     return (
         IsDisplaySetting(setting)
-        && (setting as NumberSetting).type === "number"
-        && typeof (setting as NumberSetting).value === "number"
-        && (typeof (setting as NumberSetting).width === "number"
-          || (setting as NumberSetting).width === null)
-        && typeof (setting as NumberSetting).min === "number"
-        && typeof (setting as NumberSetting).max === "number"
-        && (typeof (setting as NumberSetting).step === "number"
-          || (setting as NumberSetting).step === null)
+        && set.type === "number"
+        && typeof set.value === "number"
+        && (typeof set.width === "number" || set.width === null)
+        && typeof set.min === "number"
+        && typeof set.max === "number"
+        && (typeof set.step === "number" || typeof set.step === "undefined")
+        && (typeof set.onUnfocus === "function" || typeof set.onUnfocus === "undefined")
     );
 }
 export function IsCustomSetting(setting: Setting): setting is CustomSetting
 {
+    const set = setting as CustomSetting;
     return (
         IsDisplaySetting(setting)
         && setting.type === "custom"
-        && typeof (setting as CustomSetting).OnClick === "function"
-        && typeof (setting as CustomSetting).OnExit === "function"
-        && typeof (setting as CustomSetting).OnLoad === "function"
-        && typeof (setting as CustomSetting).OnRun === "function"
+        && typeof set.OnClick === "function"
+        && typeof set.OnExit === "function"
+        && typeof set.OnLoad === "function"
+        && typeof set.OnRun === "function"
     );
 }

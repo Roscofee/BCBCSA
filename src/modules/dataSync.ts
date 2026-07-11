@@ -1,7 +1,8 @@
-// Never send Private MPA data across the server and never accept Private MPA data
-import { HookFunction } from "../util/sdk";
-import { Module, ModuleIsPublic, ModuleTitle } from "./_module";
-import { FindCharacterInRoom, GetMPAMessageFromChat, HookedMessage, hookedMessages, MPAMessageContent, SendMPAMessage } from "../util/messaging";
+// Never send Private BCBCSA data across the server and never accept Private BCBCSA data
+import { HookFunction } from "@/util/sdk";
+import { Module, ModuleIsPublic, ModuleTitle } from "@/modules/_module";
+import { FindCharacterInRoom, GeBCBCSAMessageFromChat, HookedMessage, hookedMessages, BCBCSAMessageContent, SenBCBCSAMessage } from "@/util/messaging";
+import { STORAGE_KEY } from "@/util/constants";
 
 /**
  * Sync all of your current settings with everyone else
@@ -10,7 +11,8 @@ import { FindCharacterInRoom, GetMPAMessageFromChat, HookedMessage, hookedMessag
  */
 export function SettingSync(reply: boolean = false, target?: number): void
 {
-    const settings = structuredClone(Player.MPA);
+    const settings = structuredClone(Player[STORAGE_KEY]) as BCBCSASettings;
+    console.log("settings pre", settings);
     Object.keys(settings).forEach((moduleTitle) =>
     {
         if (!ModuleIsPublic(moduleTitle as ModuleTitle))
@@ -18,11 +20,13 @@ export function SettingSync(reply: boolean = false, target?: number): void
             delete settings[moduleTitle];
         }
     });
-    SendMPAMessage({
+
+    SenBCBCSAMessage({
         message: "SettingSync",
         settings: settings,
         reply: reply
     }, target);
+    console.log("settings pros", settings);
 }
 
 /**
@@ -36,10 +40,10 @@ export function CategorySync(category: ModuleTitle, target?: number): void
     {
         return;
     }
-    SendMPAMessage({
+    SenBCBCSAMessage({
         message: "CategorySync",
         category: category,
-        value: Player.MPA[category]
+        value: Player[STORAGE_KEY][category]
     }, target);
 }
 
@@ -71,13 +75,13 @@ export function RecordsSync(records: TransmitRecords, target?: number): void
             records.splice(i, 1);
             continue;
         }
-        record.value = Player.MPA[record.category][record.record];
+        record.value = Player[STORAGE_KEY][record.category][record.record];
     }
     if (records.length === 0)
     {
         return;
     }
-    SendMPAMessage({
+    SenBCBCSAMessage({
         message: "RecordsSync",
         records: records
     }, target);
@@ -96,13 +100,14 @@ export class DataSyncModule extends Module
             {
                 module: ModuleTitle.DataSync,
                 message: "SettingSync",
-                action: function (sender: Character, content: MPAMessageContent): void
+                action: function (sender: Character, content: BCBCSAMessageContent): void
                 {
+                    console.log("SettingSync", content);
                     if (sender.MemberNumber === Player.MemberNumber)
                     {
                         return;
                     }
-                    sender.MPA = content.settings;
+                    sender[STORAGE_KEY] = content.settings;
                     if (content.reply)
                     {
                         SettingSync(false, sender.MemberNumber);
@@ -111,39 +116,41 @@ export class DataSyncModule extends Module
             }, {
                 module: ModuleTitle.DataSync,
                 message: "CategorySync",
-                action: function (sender: Character, content: MPAMessageContent): void
+                action: function (sender: Character, content: BCBCSAMessageContent): void
                 {
+                    console.log("CategorySync", content);
                     if (sender.MemberNumber === Player.MemberNumber)
                     {
                         return;
                     }
-                    if (!sender.MPA)
+                    if (!sender[STORAGE_KEY])
                     {
                         SettingSync(false, sender.MemberNumber);
                     }
                     else
                     {
-                        sender.MPA[content.category] = content.value;
+                        sender[STORAGE_KEY][content.category] = content.value;
                     }
                 }
             }, {
                 module: ModuleTitle.DataSync,
                 message: "RecordsSync",
-                action: function (sender: Character, content: MPAMessageContent): void
+                action: function (sender: Character, content: BCBCSAMessageContent): void
                 {
+                    console.log("RecordsSync", content);
                     if (sender.MemberNumber === Player.MemberNumber)
                     {
                         return;
                     }
                     for (const record of content.records as TransmitRecords)
                     {
-                        if (!sender?.MPA?.[record.category])
+                        if (!sender?.[STORAGE_KEY]?.[record.category])
                         {
                             CategorySync(content.category, sender.MemberNumber);
                         }
                         else
                         {
-                            sender.MPA[record.category][record.record] = record.value;
+                            sender[STORAGE_KEY][record.category][record.record] = record.value;
                         }
                     }
                 }
@@ -155,7 +162,7 @@ export class DataSyncModule extends Module
     {
         super.Load();
 
-        // MPA loaded in a chatroom, Sync with others in the room
+        // BCBCSA loaded in a chatroom, Sync with others in the room
         if (ChatRoomCharacter.length !== 0)
         {
             SettingSync(true);
@@ -164,15 +171,16 @@ export class DataSyncModule extends Module
         // When joining a room, sync MPA settings with everyone else
         HookFunction(ModuleTitle.DataSync, "ChatRoomSync", 0, (args, next) =>
         {
-            next(args);
+            const ret = next(args);
             SettingSync(true);
+            return ret;
         });
 
         // Sync request, handle and reply if needed
         HookFunction(ModuleTitle.DataSync, "ChatRoomMessage", 0, (args, next) =>
         {
             const data = args[0];
-            const content = GetMPAMessageFromChat(data);
+            const content = GeBCBCSAMessageFromChat(data);
             if (!content)
             {
                 return next(args);
