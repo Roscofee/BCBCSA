@@ -22,7 +22,7 @@ export const modulesToRegister: Module[] =
 export const registeredModules: Partial<Record<ModuleTitle, Module>> =
 {
 
-}
+};
 
 export const settings: Partial<BCBCSASettings> = {};
 export async function RegisterModules(): Promise<void>

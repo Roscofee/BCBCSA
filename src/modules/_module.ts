@@ -67,7 +67,7 @@ export abstract class Module
     }
 
     /**
-     * 
+     * If the module will have a entry in the Players settings
      */
     get DisplayInSettings(): boolean
     {
