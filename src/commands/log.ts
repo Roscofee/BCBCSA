@@ -1,7 +1,7 @@
-import { HookFunction } from "../util/sdk";
+import { HookFunction } from "@/util/sdk";
 
 let logging: boolean = false;
-export function LogChat(): void
+export function Run(): void
 {
     CommandCombine([{
         Tag: "logchat",

@@ -1,36 +1,18 @@
 // globals.d.ts
 
 import { ModuleTitle } from "../src/util/settingTypes";
-import { type MPAMessageContent } from "../src/util/messaging";
-
-interface MPAWindow
-{
-    version: string;
-    menuLoaded: boolean;
-}
+import { type BCBCSAMessageContent } from "../src/util/messaging";
+import { ADDON_NAME_TYPE } from "@/util/constants";
 
 declare global
 {
-    interface Window
+    interface AddonWindowApi
     {
-        MPA: MPAWindow;
-    }
-    interface ExtensionSettings
-    {
-        MPA: string;
+        version: string;
+        menuLoaded: boolean;
     }
 
-    // Other characters may or may not have the addon
-    interface Character
-    {
-        MPA?: MPARecords;
-    }
-    interface PlayerCharacter
-    {
-        MPA: MPARecords;
-    }
-
-    // Settings of MPA
+    // Settings of BCBCSA
     interface Setting
     {
         name: string;
@@ -41,6 +23,7 @@ declare global
     {
         active: (C: Character) => boolean;
         label: string;
+        doNotModify?: (C: Character) => boolean;
     }
     interface CheckboxSetting extends DisplayedSetting
     {
@@ -62,6 +45,7 @@ declare global
         value: string;
         width: number | null;
         maxChars: number | null;
+        onUnfocus?: (C: Character, value: string, prevValue: string) => void
     }
     interface NumberSetting extends DisplayedSetting
     {
@@ -70,7 +54,8 @@ declare global
         width: number | null;
         min: number;
         max: number;
-        step: number | null;
+        step?: number;
+        onUnfocus?: (C: Character, value: number, prevValue: number) => void
     }
     interface CustomSetting extends DisplayedSetting
     {
@@ -97,20 +82,20 @@ declare global
         OnRun: (C: PlayerCharacter, hasPermission?: boolean) => void;
     }
 
-    // Cumlative settings of all modules
-    type MPACategorySettings = Record<string, Setting>;
-    type MPASettings = Record<keyof typeof ModuleTitle, MPACategorySettings>;
+    // Cumulative settings of all modules
+    type BCBCSACategorySettings = Record<string, Setting>;
+    type BCBCSASettings = Record<keyof typeof ModuleTitle, BCBCSACategorySettings>;
 
     // Storage of the settings as records, trimming everything but value
-    type MPARecord = Record<string, any>;
-    type MPARecords = Record<keyof typeof ModuleTitle, MPARecord> 
+    type BCBCSARecord = Record<string, any>;
+    type BCBCSARecords = Record<keyof typeof ModuleTitle, BCBCSARecord> 
         & {
             version: string,
             lastOnline: number
         };
 
     // Type used to create an activity
-    type AcitivityTrigger = (target: Character | undefined) => void;
+    type ActivityTrigger = (target: Character | undefined) => void;
     type ActivityReceived = (source: Character | undefined, target: Character| undefined, group: AssetGroupItemName, data: ServerChatRoomMessage) => void;
     type Prerequisite = (acting: Character, acted: Character, group: AssetGroup) => boolean;
     type NewPrerequisite = 
@@ -131,13 +116,13 @@ declare global
         Name: string;
         Targets: CustomTarget[];
         Image: string;
-        OnTrigger?: AcitivityTrigger;
+        OnTrigger?: ActivityTrigger;
         OnReceive?: ActivityReceived;
         CustomPrerequisite?: NewPrerequisite | NewPrerequisite[];
         MaxProgress?: number;
     }
 
-    interface MPALocalStorage
+    interface BCBCSALocalStorage
     {
         lastOnline: number;
     }

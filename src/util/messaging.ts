@@ -1,37 +1,38 @@
-import { ModuleTitle } from "../modules/_module";
-import { LocalizedText } from "../localization/localization";
+import { ModuleTitle } from "@/modules/_module";
+import { LocalizedText } from "@/localization/localization";
+import { ADDON_NAME, ADDON_NAME_TYPE } from "@/util/constants";
 
-export interface MPAMessageContent
+export interface BCBCSAMessageContent
 {
     message: string;
     [key: string]: any; // Allows any other keys with values of any type
 }
-interface MPAMessage extends ServerChatRoomMessage
+interface BCBCSAMessage extends ServerChatRoomMessage
 {
-    Content: "MPA";
+    Content: ADDON_NAME_TYPE;
     Type: "Hidden";
-    Dictionary: [MPAMessageContent];
+    Dictionary: [BCBCSAMessageContent];
 }
 
-export function ContentIsMPAMesage(content: ServerChatRoomMessage): content is MPAMessage
+export function ContentIsBCBCSAMessage(content: ServerChatRoomMessage): content is BCBCSAMessage
 {
     return (
         content.Type === "Hidden"
-        && content.Content === "MPA"
+        && content.Content === ADDON_NAME
         && content?.Dictionary?.length === 1
     );
 }
 
-export function GetMPAMessageFromChat(message: ServerChatRoomMessage): MPAMessageContent | null
+export function GeBCBCSAMessageFromChat(message: ServerChatRoomMessage): BCBCSAMessageContent | null
 {
-    return ContentIsMPAMesage(message) ? message.Dictionary[0] : null;
+    return ContentIsBCBCSAMessage(message) ? message.Dictionary[0] : null;
 }
 
-export function SendMPAMessage(message: MPAMessageContent, target?: number): void
+export function SenBCBCSAMessage(message: BCBCSAMessageContent, target?: number): void
 {
     ServerSend("ChatRoomChat", {
         Type: "Hidden",
-        Content: "MPA",
+        Content: ADDON_NAME,
         Dictionary: [message],
         Target: target
     });
@@ -45,16 +46,9 @@ export function SendAction(content: string, target: Character | undefined = unde
     ServerSend("ChatRoomChat", {
         Content: "MayaScript",
         Type: "Activity",
-        Dictionary: [{ Tag: "MISSING ACTIVITY DESCRIPTION FOR KEYWORD MayaScript", Text: LocalizedText(content) }, ...dictionary],
+        Dictionary: [{ Tag: `${TEXT_NOT_FOUND_PREFIX} "ActivityDictionary.csv": MayaScript`, Text: LocalizedText(content) }, ...dictionary],
         Target: target?.MemberNumber }
     );
-
-    // ServerSend("ChatRoomChat", {
-    //     Content: "Beep",
-    //     Type: "Action",
-    //     Dictionary: [{ Tag: "Beep", Text: LocalizedText(content) }],
-    //     Target: target?.MemberNumber
-    // });
 }
 
 /**
@@ -79,11 +73,11 @@ export function NotifyPlayer(content: string, timeout?: number): void
 }
 
 /**
- * Display text to the local player, making it clear its from MPA
+ * Display text to the local player, making it clear its from BCBCSA
  */
-export function MPANotifyPlayer(content: string, timeout?: number): void
+export function BCBCSANotifyPlayer(content: string, timeout?: number): void
 {
-    NotifyPlayer(`${LocalizedText("MPA")}: ${content}`, timeout);
+    NotifyPlayer(`${LocalizedText(ADDON_NAME)}: ${content}`, timeout);
 }
 
 /**
@@ -133,7 +127,7 @@ export function RemoveOOCContentFromMessage(message: string): string
     return message;
 }
 
-type MessageAction = (sender: Character, content: MPAMessageContent) => void;
+type MessageAction = (sender: Character, content: BCBCSAMessageContent) => void;
 export interface HookedMessage
 {
     module: ModuleTitle | null;
@@ -143,7 +137,7 @@ export interface HookedMessage
 export const hookedMessages: HookedMessage[] = [];
 
 /**
- * Add a listener for an incoming MPA message
+ * Add a listener for an incoming BCBCSA message
  * @param listener.title - What module does the listener belong to
  * @param listener.message - The message string to match with the incoming message
  * @param listener.action - Run this function when a match is found
@@ -157,7 +151,7 @@ export function AddDataSyncListener(listener: HookedMessage): void
     } as HookedMessage);
 }
 /**
- * Add many listeners for an incoming MPA message
+ * Add many listeners for an incoming BCBCSA message
  */
 export function AddDataSyncListeners(listeners: HookedMessage[]): void
 {

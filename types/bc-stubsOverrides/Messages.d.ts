@@ -1,6 +1,12 @@
 //#region Main data exchange types
 
-import { MPAMessageContent } from "../../src/util/messaging";
+import { BCBCSAMessageContent } from "../../src/util/messaging";
+
+// Only needed for this part
+// type ChatMessageDictionaryEntry =
+// 	| CharacterReferenceDictionaryEntry
+// 	| ...
+// 	| BCBCSAMessageContent;
 
 declare global
 {
@@ -754,7 +760,7 @@ declare global
 		| ActivityCounterDictionaryEntry
 		| AssetGroupNameDictionaryEntry
 		| ActivityNameDictionaryEntry
-		| MPAMessageContent;
+		| BCBCSAMessageContent;
 
 	type ChatMessageDictionary = ChatMessageDictionaryEntry[];
 

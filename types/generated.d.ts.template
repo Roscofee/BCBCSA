@@ -1,0 +1,30 @@
+// 
+// Typescript needs to extend an attribute for this specific addon that won't
+// conflict with other addons. Fill in the name from package.json as this
+// should be unique.
+// 
+
+declare global
+{
+    interface Window
+    {
+        __ADDON_NAME__: AddonWindowApi
+    }
+
+    interface Character
+    {
+        __ADDON_NAME__?: BCBCSARecords;
+    }
+
+    interface PlayerCharacter
+    {
+        __ADDON_NAME__: BCBCSARecords;
+    }
+
+    interface ExtensionSettings
+    {
+        __ADDON_NAME__: string;
+    }
+}
+
+export {};

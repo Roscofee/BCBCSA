@@ -1,6 +1,6 @@
 import bcModSdk, { GetDotedPathType, ModSDKModAPI, PatchHook } from "bondage-club-mod-sdk";
-import { ModuleTitle } from "../modules/_module";
-import { MPA_NAME, MPA_REPO, MPA_VERSION } from "./constants";
+import { ModuleTitle } from "@/modules/_module";
+import { ADDON_DESCRIPTION, ADDON_NAME, ADDON_REPO, ADDON_VERSION } from "@/util/constants";
 
 interface HookedFunction
 {
@@ -13,10 +13,10 @@ interface HookedFunction
 const hooks: HookedFunction[] = [];
 
 export const modAPI: ModSDKModAPI = bcModSdk.registerMod({
-    name: MPA_NAME,
-    version: MPA_VERSION,
-    fullName: "Maya's Petplay Additions",
-    repository: MPA_REPO
+    name: ADDON_NAME,
+    version: ADDON_VERSION,
+    fullName: ADDON_DESCRIPTION,
+    repository: ADDON_REPO
 }, {
     allowReplace: false
 });
@@ -98,13 +98,14 @@ export async function AwaitInChatRoom()
         const hook = modAPI.hookFunction("ChatRoomSync", 100, (args, next) =>
         {
             // Let response happen first
-            next(args);
+            const ret = next(args);
 
             // Remove this hook when done
             hook();
 
             // Resolve the promise to end the await condition
             resolve();
+            return ret;
         });
     });
 }
@@ -119,11 +120,11 @@ export function Sleep(ms: number)
 }
 
 /**
- * Get the BCX mod api for MPA
+ * Get the BCX mod api for BCBCSA
  */
 export function bcxAPI()
 {
-    return window.bcx?.getModApi(MPA_NAME);
+    return window.bcx?.getModApi(ADDON_NAME);
 }
 
 /**
